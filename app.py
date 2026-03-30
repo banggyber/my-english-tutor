@@ -5,10 +5,21 @@ import json
 # --- 설정 ---
 genai.configure(api_key=st.secrets["GENAI_API_KEY"])
 
+# 상단 모델 설정 부분을 이렇게 바꿔보세요
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
-    generation_config={"response_mime_type": "application/json"}
+    generation_config={"response_mime_type": "application/json"},
+    # 시스템 명령을 아예 고정 (더 정확해집니다)
+    system_instruction="You are a friendly English tutor. Reply in JSON: reply, translation, correction, native_tip."
 )
+
+# 하단 호출 부분은 심플하게 변경
+if prompt := st.chat_input("메시지를 입력하세요..."):
+    # ... (생략) ...
+    with st.chat_message("assistant"):
+        # 호출 시 instruction을 뺄 수 있어 에러 확률이 줄어듭니다.
+        response = model.generate_content(prompt) 
+        res_data = json.loads(response.text)
 
 # 모바일 대응 설정
 st.set_page_config(page_title="AI 잉글리시", layout="centered")
