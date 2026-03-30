@@ -3,7 +3,6 @@ import google.generativeai as genai
 import json
 
 # --- 설정 ---
-GENAI_API_KEY = "YOUR_GEMINI_API_KEY"
 genai.configure(api_key=st.secrets["GENAI_API_KEY"])
 
 model = genai.GenerativeModel(
