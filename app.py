@@ -6,7 +6,7 @@ import json
 genai.configure(api_key=st.secrets["GENAI_API_KEY"])
 
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash-latest",
+    model_name="gemini-flash-latest",
     generation_config={"response_mime_type": "application/json"}
 )
 
