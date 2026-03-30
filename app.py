@@ -2,27 +2,16 @@ import streamlit as st
 import google.generativeai as genai
 import json
 
-if "GENAI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GENAI_API_KEY"])
-else:
-    # 로컬 테스트용 혹은 에러 방지용
-    st.error("API 키가 설정되지 않았습니다. Secrets를 확인해주세요.")
+# --- 설정 ---
+genai.configure(api_key=st.secrets["GENAI_API_KEY"])
 
-# 모델 설정
-model = genai.GenerativeModel('gemini-flash-latest')
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    generation_config={"response_mime_type": "application/json"}
+)
 
-# 하단 호출 부분은 심플하게 변경
-if prompt := st.chat_input("메시지를 입력하세요..."):
-    # ... (생략) ...
-    with st.chat_message("assistant"):
-        # 호출 시 instruction을 뺄 수 있어 에러 확률이 줄어듭니다.
-        response = model.generate_content(prompt) 
-        res_data = json.loads(response.text)
-
-# 모바일 대응 설정
 st.set_page_config(page_title="AI 잉글리시", layout="centered")
 
-# --- 스타일링 (모바일 가독성) ---
 st.markdown("""
     <style>
     .main { background-color: #f5f7f9; }
@@ -35,26 +24,25 @@ st.title("📱 한 손에 영어회화")
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 대화창 출력
-for msg in st.session_state.messages:
+# 대화창 출력 (enumerate를 사용하여 고유 번호 i를 부여합니다)
+for i, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
         if "data" in msg:
             d = msg["data"]
-            # 모바일에서는 탭이나 익스팬더가 깔끔합니다.
             col1, col2 = st.columns(2)
             with col1:
-                with st.expander("🇰🇷 번역"):
+                # key=f"trans_{i}" 처럼 고유한 키를 지정하여 중복을 피합니다.
+                with st.expander("🇰🇷 번역", key=f"trans_{i}"):
                     st.caption(d["translation"])
             with col2:
                 if d["correction"]:
-                    with st.expander("🔧 교정"):
+                    with st.expander("🔧 교정", key=f"corr_{i}"):
                         st.caption(d["correction"])
             
-            # 원어민 표현은 눈에 띄게 하단에 배치
             st.warning(f"💡 **Native Pick:** {d['native_tip']}")
 
-# 입력창 (스마트폰 키보드 대응)
+# 입력창
 if prompt := st.chat_input("메시지를 입력하세요..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -66,8 +54,10 @@ if prompt := st.chat_input("메시지를 입력하세요..."):
         res_data = json.loads(response.text)
         
         st.write(res_data["reply"])
-        
-        # 즉시 피드백 노출
         st.info(f"📍 **Tip:** {res_data['native_tip']}")
         
+        # 새로운 메시지에도 고유 ID가 부여되도록 세션에 저장
         st.session_state.messages.append({"role": "assistant", "content": res_data["reply"], "data": res_data})
+        
+        # 화면 즉시 갱신
+        st.rerun()
