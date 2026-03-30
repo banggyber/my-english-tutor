@@ -2,16 +2,14 @@ import streamlit as st
 import google.generativeai as genai
 import json
 
-# --- 설정 ---
-genai.configure(api_key=st.secrets["GENAI_API_KEY"])
+if "GENAI_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GENAI_API_KEY"])
+else:
+    # 로컬 테스트용 혹은 에러 방지용
+    st.error("API 키가 설정되지 않았습니다. Secrets를 확인해주세요.")
 
-# 상단 모델 설정 부분을 이렇게 바꿔보세요
-model = genai.GenerativeModel(
-    model_name="gemini-flash-latest",
-    generation_config={"response_mime_type": "application/json"},
-    # 시스템 명령을 아예 고정 (더 정확해집니다)
-    system_instruction="You are a friendly English tutor. Reply in JSON: reply, translation, correction, native_tip."
-)
+# 모델 설정
+model = genai.GenerativeModel('gemini-flash-latest')
 
 # 하단 호출 부분은 심플하게 변경
 if prompt := st.chat_input("메시지를 입력하세요..."):
