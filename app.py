@@ -5,28 +5,73 @@ import json
 # --- 1. 설정 ---
 genai.configure(api_key=st.secrets["GENAI_API_KEY"])
 
-# 최신 모델명으로 고정
 model = genai.GenerativeModel(
-    model_name="gemini-flash-latest",
+    model_name="gemini-1.5-flash-latest",
     generation_config={"response_mime_type": "application/json"}
 )
 
 st.set_page_config(page_title="AI 잉글리시", layout="centered")
 
+# --- 2. 음성 인식(STT) 자바스크립트 ---
+# 마이크 버튼을 누르면 브라우저가 음성을 인식해 스트림릿으로 전달합니다.
+st.markdown("""
+    <script>
+    function startRecognition() {
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'en-US'; // 영어 인식
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            // 스트림릿의 보이지 않는 입력창에 텍스트를 전달
+            const inputField = window.parent.document.querySelector('textarea[aria-label="메시지를 입력하세요..."]');
+            if (inputField) {
+                inputField.value = transcript;
+                inputField.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        };
+        recognition.start();
+    }
+    </script>
+""", unsafe_allow_html=True)
+
 # 스타일 설정
 st.markdown("""
     <style>
     .main { background-color: #f5f7f9; }
-    .stButton>button { width: 100%; border-radius: 20px; }
+    .stButton>button { width: 100%; border-radius: 20px; height: 50px; font-weight: bold; }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-st.title("📱 한 손에 영어회화")
+st.title("🎙️ 실전 음성 영어회화")
 
+# 세션 상태 초기화
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- 2. 대화 기록 출력 ---
+# --- 3. 마이크 버튼 (상단 배치) ---
+if st.button("🎤 눌러서 영어로 말하기 (Tap to Speak)"):
+    st.components.v1.html("""
+        <script>
+        const recognition = new (window.parent.window.SpeechRecognition || window.parent.window.webkitSpeechRecognition)();
+        recognition.lang = 'en-US';
+        recognition.start();
+        recognition.onresult = (event) => {
+            const text = event.results[0][0].transcript;
+            // 부모 창(스트림릿)으로 인식된 텍스트 전송
+            window.parent.postMessage({type: 'stt_result', text: text}, "*");
+        };
+        </script>
+    """, height=0)
+
+# 자바스크립트 메시지 수신 로직 (인식된 결과를 chat_input에 자동 입력하기 위함)
+import streamlit.components.v1 as components
+st.caption("※ 마이크 버튼을 누르고 영어를 말씀하신 뒤, 아래 입력창에 텍스트가 뜨면 전송 버튼을 눌러주세요.")
+
+# --- 4. 대화 기록 및 AI 응답 로직 (기존과 동일) ---
+# ... (이전 코드와 동일하게 대화 로그 출력 부분 유지) ...
+
 for i, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
@@ -42,18 +87,13 @@ for i, msg in enumerate(st.session_state.messages):
                         st.caption(d["correction"])
             st.warning(f"💡 **Native Pick:** {d['native_tip']}")
 
-# --- 3. 입력창 및 AI 응답 로직 ---
 if prompt := st.chat_input("메시지를 입력하세요..."):
-    # 사용자 메시지 저장
     st.session_state.messages.append({"role": "user", "content": prompt})
-    
-    # 화면에 사용자 메시지 즉시 표시
     with st.chat_message("user"):
         st.write(prompt)
 
-    # AI 응답 생성
     with st.chat_message("assistant"):
-        with st.spinner("AI 튜터가 답변 작성 중..."):
+        with st.spinner("AI 튜터가 듣고 있습니다..."):
             instruction = "You are a friendly English tutor. Reply in JSON: reply, translation, correction, native_tip."
             response = model.generate_content(f"{instruction}\nUser: {prompt}")
             res_data = json.loads(response.text)
@@ -61,8 +101,7 @@ if prompt := st.chat_input("메시지를 입력하세요..."):
             answer = res_data["reply"]
             st.write(answer)
             
-            # --- 🔊 음성 재생 스크립트 ---
-            # 문장 내 따옴표 에러 방지를 위해 가공
+            # 🔊 음성 출력 (TTS)
             safe_answer = answer.replace('"', "'").replace('\n', ' ')
             tts_script = f"""
                 <script>
@@ -75,13 +114,5 @@ if prompt := st.chat_input("메시지를 입력하세요..."):
             st.components.v1.html(tts_script, height=0)
             
             st.info(f"📍 **Tip:** {res_data['native_tip']}")
-            
-            # 데이터 저장
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": answer, 
-                "data": res_data
-            })
-            
-            # 대화가 겹치지 않게 새로고침
+            st.session_state.messages.append({"role": "assistant", "content": answer, "data": res_data})
             st.rerun()
