@@ -7,7 +7,7 @@ genai.configure(api_key=st.secrets["GENAI_API_KEY"])
 
 # 상단 모델 설정 부분을 이렇게 바꿔보세요
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-1.5-flash-latest",
     generation_config={"response_mime_type": "application/json"},
     # 시스템 명령을 아예 고정 (더 정확해집니다)
     system_instruction="You are a friendly English tutor. Reply in JSON: reply, translation, correction, native_tip."
