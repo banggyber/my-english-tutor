@@ -61,3 +61,36 @@ if prompt := st.chat_input("메시지를 입력하세요..."):
         
         # 화면 즉시 갱신
         st.rerun()
+
+# AI 응답 출력 부분 수정
+with st.chat_message("assistant"):
+    with st.spinner("AI 튜터가 답변을 작성 중입니다..."):
+        try:
+            response = model.generate_content(user_input)
+            res_data = json.loads(response.text)
+            
+            answer = res_data["reply"]
+            st.write(answer)
+            
+            # --- 🔊 음성 재생 스크립트 추가 ---
+            # 자바스크립트를 사용해 브라우저가 영어를 읽게 합니다.
+            # 스마트폰에서도 작동합니다.
+            tts_script = f"""
+                <script>
+                var msg = new SpeechSynthesisUtterance("{answer.replace('"', "'")}");
+                msg.lang = 'en-US';
+                msg.rate = 0.9; // 속도 조절 (0.8 ~ 1.0 추천)
+                window.speechSynthesis.speak(msg);
+                </script>
+            """
+            st.components.v1.html(tts_script, height=0)
+            # ----------------------------------
+
+            st.info(f"📍 **Tip:** {res_data['native_tip']}")
+            
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": answer, 
+                "data": res_data
+            })
+            st.rerun()
