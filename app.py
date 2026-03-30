@@ -7,7 +7,7 @@ genai.configure(api_key=st.secrets["GENAI_API_KEY"])
 
 # 최신 모델명으로 고정
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash-latest",
+    model_name="gemini-flash-latest",
     generation_config={"response_mime_type": "application/json"}
 )
 
